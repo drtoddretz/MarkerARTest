@@ -2,81 +2,115 @@
 <html>
   <head>
     <meta charset="utf-8">
+    <title>QR Marker AR</title>
+
+    <!-- Three.js -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js"></script>
+
+    <!-- OBJ + MTL Loaders -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/examples/js/loaders/MTLLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/examples/js/loaders/OBJLoader.js"></script>
+
+    <!-- AR.js (stable version for iOS Safari) -->
     <script src="https://cdn.jsdelivr.net/npm/ar.js@3.3.2/three.js/build/ar-threex.js"></script>
+
+    <style>
+      body { margin: 0; overflow: hidden; }
+      #startButton {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 20px 30px;
+        font-size: 20px;
+        background: #007aff;
+        color: white;
+        border-radius: 10px;
+        cursor: pointer;
+        z-index: 10;
+      }
+    </style>
   </head>
 
-  <body style="margin:0; overflow:hidden;">
+  <body>
+    <div id="startButton">Tap to Start AR</div>
+
     <script>
-      // Scene setup
-      const scene = new THREE.Scene();
-      const camera = new THREE.Camera();
-      scene.add(camera);
+      let started = false;
 
-      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      document.body.appendChild(renderer.domElement);
+      document.getElementById("startButton").onclick = () => {
+        if (started) return;
+        started = true;
+        document.getElementById("startButton").style.display = "none";
+        startAR();
+      };
 
-      // AR.js source
-      const source = new THREEx.ArToolkitSource({ sourceType: 'webcam' });
-      source.init();
+      function startAR() {
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.Camera();
+        scene.add(camera);
 
-      // AR.js context
-      const context = new THREEx.ArToolkitContext({
-        cameraParametersUrl: 'https://cdn.jsdelivr.net/npm/ar.js@3.4.2/three.js/data/camera_para.dat',
-        detectionMode: 'mono'
-      });
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
 
-      context.init(() => {
-        camera.projectionMatrix.copy(context.getProjectionMatrix());
-      });
+        // AR.js source
+        const source = new THREEx.ArToolkitSource({ sourceType: 'webcam' });
+        source.init();
 
-      // Marker
-      const marker = new THREEx.ArMarkerControls(context, camera, {
-        type: 'pattern',
-        patternUrl: 'https://cdn.jsdelivr.net/npm/ar.js@3.4.2/three.js/data/patt.hiro'
-      });
+        // AR.js context
+        const context = new THREEx.ArToolkitContext({
+          cameraParametersUrl: 'https://cdn.jsdelivr.net/npm/ar.js@3.3.2/three.js/data/camera_para.dat',
+          detectionMode: 'mono'
+        });
 
-      scene.visible = false;
+        context.init(() => {
+          camera.projectionMatrix.copy(context.getProjectionMatrix());
+        });
 
-      // ----------- UNIVERSAL OBJ/MTL LOADING LOGIC -----------
-      const objLoader = new THREE.OBJLoader();
-      const mtlLoader = new THREE.MTLLoader();
+        // Custom QR marker
+        const marker = new THREEx.ArMarkerControls(context, camera, {
+          type: 'pattern',
+          patternUrl: 'qr.patt'
+        });
 
-      // Try loading MTL first
-      fetch('model.mtl')
-        .then(response => {
-          if (!response.ok) throw new Error("No MTL file found");
-          return response.text();
-        })
-        .then(() => {
-          // MTL exists — load it
-          mtlLoader.load('model.mtl', materials => {
-            materials.preload();
-            objLoader.setMaterials(materials);
+        scene.visible = false;
+
+        // Loaders
+        const objLoader = new THREE.OBJLoader();
+        const mtlLoader = new THREE.MTLLoader();
+
+        // Try loading MTL first
+        fetch('model.mtl')
+          .then(response => {
+            if (!response.ok) throw new Error("No MTL file found");
+            return response.text();
+          })
+          .then(() => {
+            mtlLoader.load('model.mtl', materials => {
+              materials.preload();
+              objLoader.setMaterials(materials);
+              objLoader.load('model.obj', object => {
+                object.scale.set(0.1, 0.1, 0.1);
+                scene.add(object);
+              });
+            });
+          })
+          .catch(() => {
             objLoader.load('model.obj', object => {
               object.scale.set(0.1, 0.1, 0.1);
               scene.add(object);
             });
           });
-        })
-        .catch(() => {
-          // No MTL — load OBJ only
-          objLoader.load('model.obj', object => {
-            object.scale.set(0.1, 0.1, 0.1);
-            scene.add(object);
-          });
-        });
 
-      // Render loop
-      function animate() {
-        requestAnimationFrame(animate);
-        if (source.ready) context.update(source.domElement);
-        renderer.render(scene, camera);
+        // Render loop
+        function animate() {
+          requestAnimationFrame(animate);
+          if (source.ready) context.update(source.domElement);
+          renderer.render(scene, camera);
+        }
+        animate();
       }
-      animate();
     </script>
   </body>
 </html>
