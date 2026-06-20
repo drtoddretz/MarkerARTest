@@ -1,116 +1,37 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>QR Marker AR</title>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code WebAR Experience</title>
+    <!-- Include A-Frame Boilerplate Library -->
+    <script src="https://aframe.io"></script>
+    <!-- Include AR.js Tracking Library for A-Frame -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+</head>
+<body style="margin: 0; overflow: hidden;">
 
-    <!-- Three.js -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js"></script>
+    <!-- Initialize AR scene with marker tracking capabilities -->
+    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+        
+        <!-- Define assets to cache and preload safely -->
+        <a-assets>
+            <!-- You can replace the box with a 3D model .gltf later -->
+        </a-assets>
 
-    <!-- OBJ + MTL Loaders -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/examples/js/loaders/MTLLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/examples/js/loaders/OBJLoader.js"></script>
+        <!-- Point directly to your compiled tracking pattern file -->
+        <a-marker type="pattern" url="pattern-qr.patt">
+            <!-- Render a standard neon blue 3D cube over the QR code -->
+            <a-box position="0 0.5 0" 
+                   material="color: #00E5FF; opacity: 0.9;" 
+                   animation="property: rotation; to: 0 360 0; loop: true; dur: 4000">
+            </a-box>
+        </a-marker>
 
-    <!-- AR.js (stable version for iOS Safari) -->
-    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.3.2/three.js/build/ar-threex.js"></script>
+        <!-- Provide a static fall-back camera matrix required for scene rendering -->
+        
 
-    <style>
-      body { margin: 0; overflow: hidden; }
-      #startButton {
-        position: absolute;
-        top: 50%; left: 50%;
-        transform: translate(-50%, -50%);
-        padding: 20px 30px;
-        font-size: 20px;
-        background: #007aff;
-        color: white;
-        border-radius: 10px;
-        cursor: pointer;
-        z-index: 10;
-      }
-    </style>
-  </head>
+    </a-scene>
 
-  <body>
-    <div id="startButton">Tap to Start AR</div>
-
-    <script>
-      let started = false;
-
-      document.getElementById("startButton").onclick = () => {
-        if (started) return;
-        started = true;
-        document.getElementById("startButton").style.display = "none";
-        startAR();
-      };
-
-      function startAR() {
-        // Scene setup
-        const scene = new THREE.Scene();
-        const camera = new THREE.Camera();
-        scene.add(camera);
-
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
-
-        // AR.js source
-        const source = new THREEx.ArToolkitSource({ sourceType: 'webcam' });
-        source.init();
-
-        // AR.js context
-        const context = new THREEx.ArToolkitContext({
-          cameraParametersUrl: 'https://cdn.jsdelivr.net/npm/ar.js@3.3.2/three.js/data/camera_para.dat',
-          detectionMode: 'mono'
-        });
-
-        context.init(() => {
-          camera.projectionMatrix.copy(context.getProjectionMatrix());
-        });
-
-        // Custom QR marker
-        const marker = new THREEx.ArMarkerControls(context, camera, {
-          type: 'pattern',
-          patternUrl: 'qr.patt'
-        });
-
-        scene.visible = false;
-
-        // Loaders
-        const objLoader = new THREE.OBJLoader();
-        const mtlLoader = new THREE.MTLLoader();
-
-        // Try loading MTL first
-        fetch('model.mtl')
-          .then(response => {
-            if (!response.ok) throw new Error("No MTL file found");
-            return response.text();
-          })
-          .then(() => {
-            mtlLoader.load('model.mtl', materials => {
-              materials.preload();
-              objLoader.setMaterials(materials);
-              objLoader.load('model.obj', object => {
-                object.scale.set(0.1, 0.1, 0.1);
-                scene.add(object);
-              });
-            });
-          })
-          .catch(() => {
-            objLoader.load('model.obj', object => {
-              object.scale.set(0.1, 0.1, 0.1);
-              scene.add(object);
-            });
-          });
-
-        // Render loop
-        function animate() {
-          requestAnimationFrame(animate);
-          if (source.ready) context.update(source.domElement);
-          renderer.render(scene, camera);
-        }
-        animate();
-      }
-    </script>
-  </body>
+</body>
 </html>
