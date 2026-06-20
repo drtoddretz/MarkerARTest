@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/examples/js/loaders/MTLLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.2/three.js/build/ar-threex.js"></script>
+  </head>
+
+  <body style="margin:0; overflow:hidden;">
+    <script>
+      // Scene setup
+      const scene = new THREE.Scene();
+      const camera = new THREE.Camera();
+      scene.add(camera);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      // AR.js source
+      const source = new THREEx.ArToolkitSource({ sourceType: 'webcam' });
+      source.init();
+
+      // AR.js context
+      const context = new THREEx.ArToolkitContext({
+        cameraParametersUrl: 'https://cdn.jsdelivr.net/npm/ar.js@3.4.2/three.js/data/camera_para.dat',
+        detectionMode: 'mono'
+      });
+
+      context.init(() => {
+        camera.projectionMatrix.copy(context.getProjectionMatrix());
+      });
+
+      // Marker
+      const marker = new THREEx.ArMarkerControls(context, camera, {
+        type: 'pattern',
+        patternUrl: 'https://cdn.jsdelivr.net/npm/ar.js@3.4.2/three.js/data/patt.hiro'
+      });
+
+      scene.visible = false;
+
+      // ----------- UNIVERSAL OBJ/MTL LOADING LOGIC -----------
+      const objLoader = new THREE.OBJLoader();
+      const mtlLoader = new THREE.MTLLoader();
+
+      // Try loading MTL first
+      fetch('model.mtl')
+        .then(response => {
+          if (!response.ok) throw new Error("No MTL file found");
+          return response.text();
+        })
+        .then(() => {
+          // MTL exists — load it
+          mtlLoader.load('model.mtl', materials => {
+            materials.preload();
+            objLoader.setMaterials(materials);
+            objLoader.load('model.obj', object => {
+              object.scale.set(0.1, 0.1, 0.1);
+              scene.add(object);
+            });
+          });
+        })
+        .catch(() => {
+          // No MTL — load OBJ only
+          objLoader.load('model.obj', object => {
+            object.scale.set(0.1, 0.1, 0.1);
+            scene.add(object);
+          });
+        });
+
+      // Render loop
+      function animate() {
+        requestAnimationFrame(animate);
+        if (source.ready) context.update(source.domElement);
+        renderer.render(scene, camera);
+      }
+      animate();
+    </script>
+  </body>
+</html>
